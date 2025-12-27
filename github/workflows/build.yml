@@ -1,5 +1,5 @@
 name: Compilador
-on: [push]
+on: [push, workflow_dispatch]
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -10,11 +10,10 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-      - name: Build
-        run: mvn -B package --file pom.xml
-      - name: Upload
+      - name: Ejecutar Maven
+        run: mvn clean package
+      - name: Descargar JAR
         uses: actions/upload-artifact@v4
         with:
-          name: GensPro-JAR
+          name: GensPro-Final
           path: target/GensPro-1.0.jar
-          
