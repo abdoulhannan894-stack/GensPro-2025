@@ -24,6 +24,6 @@
     </dependencies>
     <build>
         <finalName>GensPro-1.0</finalName>
+        <defaultGoal>clean package</defaultGoal>
     </build>
 </project>
-
