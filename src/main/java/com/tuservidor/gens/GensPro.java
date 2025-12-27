@@ -1,18 +1,27 @@
 package com.tuservidor.gens;
 
-import org.bukkit.*;
-import org.bukkit.command.*;
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandExecutor;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.bukkit.event.*;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.structure.Structure;
 import org.bukkit.structure.StructureManager;
+
 import java.io.File;
 import java.sql.*;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
 
 public class GensPro extends JavaPlugin implements Listener, CommandExecutor {
 
@@ -24,15 +33,17 @@ public class GensPro extends JavaPlugin implements Listener, CommandExecutor {
     public void onEnable() {
         if (!getDataFolder().exists()) getDataFolder().mkdirs();
         new File(getDataFolder(), "schematics").mkdirs();
+
         setupDatabase();
         loadAllData();
+
         getCommand("gens").setExecutor(this);
         getServer().getPluginManager().registerEvents(this, this);
+
         new BukkitRunnable() {
             @Override
             public void run() { saveAllData(); }
         }.runTaskTimerAsynchronously(this, 100L, 100L);
-        getLogger().info("GensPro 2025 cargado.");
     }
 
     private void setupDatabase() {
@@ -41,7 +52,9 @@ public class GensPro extends JavaPlugin implements Listener, CommandExecutor {
             try (Statement s = connection.createStatement()) {
                 s.execute("CREATE TABLE IF NOT EXISTS islands (uuid VARCHAR(36) PRIMARY KEY, x DOUBLE, y DOUBLE, z DOUBLE, world TEXT)");
             }
-        } catch (SQLException e) { e.printStackTrace(); }
+        } catch (SQLException e) {
+            getLogger().log(Level.SEVERE, "Error DB", e);
+        }
     }
 
     @Override
@@ -55,7 +68,7 @@ public class GensPro extends JavaPlugin implements Listener, CommandExecutor {
         }
         if (args.length >= 1 && args[0].equalsIgnoreCase("is")) {
             Location loc = playerIslands.get(player.getUniqueId());
-            if (loc != null) { player.teleport(loc); player.sendMessage("§aRegresaste."); }
+            if (loc != null) { player.teleport(loc); }
             else { player.sendMessage("§eUsa: /gens is create"); }
             return true;
         }
@@ -65,11 +78,10 @@ public class GensPro extends JavaPlugin implements Listener, CommandExecutor {
     private void createIsland(Player player) {
         File schemFile = new File(getDataFolder(), "schematics/" + SCHEM_NAME);
         if (!schemFile.exists()) {
-            player.sendMessage("§cNo se encontro " + SCHEM_NAME);
+            player.sendMessage("§cNo se encontro el archivo .schematic");
             return;
         }
-        int id = playerIslands.size() + 1;
-        Location spawnLoc = new Location(player.getWorld(), id * 1000.0, 100.0, 0);
+        Location spawnLoc = new Location(player.getWorld(), (playerIslands.size() + 1) * 1000.0, 100.0, 0);
         StructureManager sm = Bukkit.getStructureManager();
         try {
             Structure structure = sm.loadStructure(schemFile);
@@ -78,11 +90,10 @@ public class GensPro extends JavaPlugin implements Listener, CommandExecutor {
             Location safeLoc = spawnLoc.add(structure.getSize().getX() / 2.0, 1.5, structure.getSize().getZ() / 2.0);
             playerIslands.put(player.getUniqueId(), safeLoc);
             player.teleport(safeLoc);
-            player.sendMessage("§aIsla creada.");
-        } catch (Exception e) { player.sendMessage("§cError schematic."); }
+        } catch (Exception e) { player.sendMessage("§cError cargando estructura."); }
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR)
     public void onVoidFall(EntityDamageEvent event) {
         if (event.getEntity() instanceof Player player && event.getCause() == EntityDamageEvent.DamageCause.VOID) {
             Location home = playerIslands.get(player.getUniqueId());
@@ -90,14 +101,13 @@ public class GensPro extends JavaPlugin implements Listener, CommandExecutor {
                 event.setCancelled(true);
                 player.setFallDistance(0);
                 player.teleport(home);
-                player.sendMessage("§eRescatado.");
             }
         }
     }
 
     private synchronized void saveAllData() {
         try (PreparedStatement ps = connection.prepareStatement("REPLACE INTO islands VALUES (?, ?, ?, ?, ?)")) {
-            for (var entry : playerIslands.entrySet()) {
+            for (java.util.Map.Entry<UUID, Location> entry : playerIslands.entrySet()) {
                 Location l = entry.getValue();
                 ps.setString(1, entry.getKey().toString());
                 ps.setDouble(2, l.getX());
@@ -118,5 +128,5 @@ public class GensPro extends JavaPlugin implements Listener, CommandExecutor {
             }
         } catch (SQLException e) { e.printStackTrace(); }
     }
-                                      }
-              
+    }
+
