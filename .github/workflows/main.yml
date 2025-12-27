@@ -1,0 +1,29 @@
+name: Compilador GensPro
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Compilar con Maven
+        run: mvn -B package --file pom.xml
+
+      - name: Guardar el archivo JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: GensPro-JAR-Final
+          path: target/GensPro-1.0.jar
+          
